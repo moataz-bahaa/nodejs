@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= pageTitle %></title>
+    <%- include('../includes/styles.ejs') %>
+    <link rel="stylesheet" href="/css/product.css" />
+  </head>
+  <body>
+    <%- include('../includes/navbar.ejs') %>
+    <main class="centered">
+      <h1><%= product.title %></h1>
+      <hr />
+      <div>
+        <img
+          src="<%= product.imageUrl %> "
+          alt="<%= product.title %>"
+          style="max-width: 200px"
+        />
+      </div>
+      <h2>$<%= product.price %></h2>
+      <p><%= product.description %></p>
+      <%- include('../includes/add-to-cart.ejs') %>
+    </main>
+
+    <%- include('../includes/scripts.ejs') %>
+  </body>
+</html>

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= pageTitle %></title>
+    <%- include('../includes/styles.ejs') %>
+    <link rel="stylesheet" href="/css/product.css" />
+  </head>
+  <body>
+    <%- include('../includes/navbar.ejs') %>
+    <main>
+      <% if (products.length > 0) { %>
+      <h1>Total Price: $<%= totalPrice %></h1>
+      <ul>
+        <% for(let product of products) { %>
+        <li>
+          <p><%= product.title %> (<%= product.quantity %>)</p>
+          <form action="/cart-delete-item" method="POST">
+            <input type="hidden" name="id" value="<%= product._id %>" />
+            <button class="btn" type="submit">Delete From Cart</button>
+          </form>
+        </li>
+        <% } %>
+      </ul>
+      <% } else { %>
+      <h1>Empty Cart</h1>
+      <% } %>
+    </main>
+    <%- include('../includes/scripts.ejs') %>
+  </body>
+</html>
