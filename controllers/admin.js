@@ -11,18 +11,21 @@ exports.getAddProduct = (req, res) => {
 
 exports.postAddProduct = (req, res) => {
   const { title, price, imageUrl, description } = req.body;
-  const product = new Product(null, title, imageUrl, description, +price);
+  const product = new Product(title, imageUrl, description, +price);
   product.save();
   res.redirect('/');
 };
 
-exports.postEditProduct = (req, res) => {
+exports.postEditProduct = async(req, res) => {
   const { id, title, imageUrl, description, price } = req.body;
-  Product.fetchProduct(id, (product) => {
-    const newProduct = new Product(id, title, imageUrl, description, price);
-    newProduct.save();
-    res.redirect('/admin/products');
-  });
+  const newProduct = {
+    title,
+    imageUrl,
+    description,
+    price,
+  };
+  const result = await Product.update(id, newProduct);
+  res.redirect('/admin/products');
 };
 
 exports.getProducts = (req, res) => {
@@ -41,6 +44,7 @@ exports.getEditProduct = (req, res) => {
     return res.redirect('/404');
   }
   const id = req.params.id;
+
   Product.fetchProduct(id, (product) => {
     if (!product) {
       return res.redirect('/404');
