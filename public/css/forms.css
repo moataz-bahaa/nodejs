@@ -17,10 +17,6 @@
   border-radius: 2px;
 }
 
-.form-control textarea {
-  resize: none;
-}
-
 .form-control input:focus,
 .form-control textarea:focus {
   outline-color: #00695c;

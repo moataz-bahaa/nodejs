@@ -1,34 +1,26 @@
-const mongodb = require('mongodb');
+const ObjectId = require('mongodb').ObjectId;
 
 const { getDb } = require('../util/dababase');
 
-
 module.exports = class Product {
-  constructor(title, imageUrl, description, price) {
+  constructor(title, imageUrl, description, price, userId) {
     this.title = title;
     this.imageUrl = imageUrl;
     this.description = description;
     this.price = price;
+    this.userId = userId;
   }
 
   save() {
     const db = getDb();
-    return db
-      .collection('products')
-      .insertOne(this)
-      .then((result) => {
-        console.log('product saved:', result);
-      })
-      .catch((error) => {
-        console.log(error);
-      });
+    return db.collection('products').insertOne(this);
   }
 
-  static async update(id, newProduct) {
+  static update(id, newProduct) {
     const db = getDb();
-    const result = await db.collection('products').updateOne(
+    return db.collection('products').updateOne(
       {
-        _id: new mongodb.ObjectId(id),
+        _id: new ObjectId(id),
       },
       {
         $set: {
@@ -36,34 +28,22 @@ module.exports = class Product {
         },
       }
     );
-    console.log(result);
-    return result;
   }
 
-  static async deleteById(id) {
-    try {
-      const db = getDb();
-      const result = await db
-        .collection('products')
-        .deleteOne({ _id: new mongodb.ObjectId(id) });
-      return result;
-    } catch (error) {
-      console.log(error);
-    }
-  }
-
-  static async fetchAll(cb) {
+  static deleteById(id) {
     const db = getDb();
-    const products = await db.collection('products').find().toArray();
-    cb(products);
+    return db.collection('products').deleteOne({ _id: new ObjectId(id) });
   }
 
-  static async fetchProduct(id, cb) {
+  static fetchAll() {
     const db = getDb();
-    const product = await db
+    return db.collection('products').find().toArray();
+  }
+
+  static fetchProduct(id) {
+    const db = getDb();
+    return db
       .collection('products')
-      .find({ _id: new mongodb.ObjectId(id) })
-      .next();
-    cb(product);
+      .findOne({ _id: new ObjectId(id) });
   }
 };
