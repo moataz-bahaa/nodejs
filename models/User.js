@@ -1,124 +1,64 @@
-const ObjectId = require('mongodb').ObjectId;
-const { getDb } = require('../util/dababase');
+const mongoose = require('mongoose');
 
-class User {
-  constructor(username, email, cart, id) {
-    this.username = username;
-    this.email = email;
-    this.cart = cart; // {itesm: []}
-    this._id = id;
-  }
+const Schema = mongoose.Schema;
 
-  save() {
-    const db = getDb();
-    return db.collection('users').insertOne(this);
-  }
-
-  addToCart(product) {
-    const cartProduct = this.cart.items.find(
-      (p) => p.productId.toString() === product._id.toString()
-    );
-    if (cartProduct) {
-      cartProduct.quantity += 1;
-    } else {
-      this.cart.items.push({
-        productId: new ObjectId(product._id),
-        quantity: 1,
-      });
-    }
-    const db = getDb();
-    return db.collection('users').updateOne(
+const userSchema = new Schema({
+  username: {
+    type: String,
+    required: true,
+  },
+  email: {
+    type: String,
+    required: true,
+  },
+  password: {
+    type: String,
+    required: true,
+  },
+  cart: {
+    items: [
       {
-        _id: ObjectId(this._id),
-      },
-      {
-        $set: {
-          cart: this.cart,
+        productId: {
+          type: Schema.Types.ObjectId,
+          ref: 'Product',
+          required: true,
         },
-      }
-    );
-  }
+        quantity: {
+          type: Number,
+          required: true,
+        },
+      },
+    ],
+  },
+});
 
-  deleteFromCart(productId) {
-    const updatedCartItems = this.cart.items.filter((item) => {
-      return item.productId.toString() !== productId.toString();
+userSchema.methods.addToCart = function (product) {
+  const cartProduct = this.cart.items.find(
+    (p) => p.productId.toString() === product._id.toString()
+  );
+  if (cartProduct) {
+    cartProduct.quantity += 1;
+  } else {
+    this.cart.items.push({
+      productId: product._id,
+      quantity: 1,
     });
-    const db = getDb();
-    return db.collection('users').updateOne(
-      {
-        _id: ObjectId(this._id),
-      },
-      {
-        $set: {
-          cart: {
-            items: updatedCartItems,
-          },
-        },
-      }
-    );
   }
+  return this.save();
+};
 
-  getCart() {
-    const db = getDb();
-    const productsIds = this.cart.items.map((p) => p.productId);
-    return db
-      .collection('products')
-      .find({ _id: { $in: productsIds } })
-      .toArray()
-      .then((products) => {
-        return products.map((p) => {
-          return {
-            ...p,
-            quantity: this.cart.items.find((i) => {
-              return i.productId.toString() === p._id.toString();
-            }).quantity,
-          };
-        });
-      });
-  }
+userSchema.methods.removeFromCart = function (productId) {
+  const updatedCartItems = this.cart.items.filter((item) => {
+    return item.productId.toString() !== productId.toString();
+  });
+  this.cart.items = updatedCartItems;
+  return this.save();
+};
 
-  addOrder() {
-    const db = getDb();
-    return this.getCart()
-      .then((products) => {
-        const order = {
-          items: products,
-          user: {
-            _id: new ObjectId(this._id),
-            name: this.username,
-          },
-        };
-        return db.collection('orders').insertOne(order);
-      })
-      .then((result) => {
-        this.cart = {
-          items: [],
-        };
-        return db.collection('users').updateOne(
-          {
-            _id: ObjectId(this._id),
-          },
-          {
-            $set: {
-              cart: this.cart,
-            },
-          }
-        );
-      });
-  }
-
-  getOrders() {
-    const db = getDb();
-    return db
-      .collection('orders')
-      .find({ 'user._id': new ObjectId(this._id) })
-      .toArray();
-  }
-
-  static findById(userId) {
-    const db = getDb();
-    return db.collection('users').findOne({ _id: new ObjectId(userId) });
-  }
+userSchema.methods.clearCart = function() {
+  this.cart.items = [];
+  return this.save();
 }
 
-module.exports = User;
+module.exports = mongoose.model('User', userSchema);
+
