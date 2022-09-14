@@ -5,6 +5,8 @@ const session = require('express-session');
 const MongodbStore = require('connect-mongodb-session')(session);
 const csrf = require('csurf');
 const flash = require('connect-flash');
+require('dotenv').config();
+
 
 const joinPath = require('./util/path');
 const adminRoutes = require('./routes/admin');
@@ -13,8 +15,7 @@ const authRoutes = require('./routes/auth');
 const errorController = require('./controllers/error');
 const User = require('./models/user');
 
-const MONGODB_URI =
-  'mongodb+srv://moataz:328221@cluster0.nxnka7l.mongodb.net/shop?retryWrites=true&w=majority';
+const MONGODB_URI = process.env.MONGODB_URI;
 
 const app = express();
 const store = new MongodbStore({
@@ -79,4 +80,4 @@ mongoose
 
 // section 10 - 9
 
-// section 16 - 1
+// section 17 - 1
