@@ -14,4 +14,10 @@ router.post('/signup', authConroller.postSignup);
 
 router.post('/logout', authConroller.postLogout);
 
+router.get('/reset', authConroller.getReset);
+
+router.post('/reset', authConroller.postReset);
+
+// router.get('/reset/:token', authConroller.getReset);
+
 module.exports = router;

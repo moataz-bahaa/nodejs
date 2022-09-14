@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const nodemailer = require('nodemailer');
 const sendgridTransport = require('nodemailer-sendgrid-transport');
@@ -130,3 +131,69 @@ exports.postSignup = (req, res) => {
       console.log(err);
     });
 };
+
+exports.getReset = (req, res) => {
+  let message = req.flash('error');
+  if (message.length > 0) {
+    message = message[0];
+  } else {
+    message = null;
+  }
+  res.render('auth/reset', {
+    pageTitle: 'rest password',
+    path: '/reset',
+    errorMessage: message,
+  });
+};
+
+exports.postReset = (req, res) => {
+  const { email } = req.body;
+  crypto.randomBytes(32, (error, buffer) => {
+    if (error) {
+      req.flash('error', 'Erroro in backend!!!');
+      console.log(error);
+      return res.redirect('/reset');
+    }
+    const token = buffer.toString('hex');
+    (async () => {
+      try {
+        const user = await User.findOne({ email });
+        if (!user) {
+          req.flash('error', 'No account with that email found');
+          return res.redirect('/reset');
+        }
+        user.resetToken = token;
+        user.resetTokenExpiration = Date.now() + 3600000;
+        await user.save();
+        res.redirect('/');
+        console.log({ email });
+        const result = await transporter.sendMail({
+          from: 'moataz.bahaa220@gmail.com',
+          to: email,
+          subject: 'Reset password',
+          html: `
+            <p>You requested a password reset</p>
+            <p>Click this <a href="https://localhost:3000/reset/${token}">link</a> to set a new password</p>
+          `,
+        });
+        console.log({ result });
+      } catch (err) {
+        console.log(err);
+      }
+    })();
+  });
+};
+
+// exports.getReset = (req, res) => {
+//   let message = req.flash('error');
+//   if (message.length > 0) {
+//     message = message[0];
+//   } else {
+//     message = null;
+//   }
+//   res.render('auth/reset', {
+//     pageTitle: 'rest password',
+//     path: '/reset',
+//     errorMessage: message,
+//   });
+// };
