@@ -11,7 +11,6 @@ exports.getAddProduct = (req, res) => {
 
 exports.postAddProduct = (req, res) => {
   const { title, price, imageUrl, description } = req.body;
-  console.log(req.user);
   const product = new Product({
     title,
     price: +price,
@@ -33,22 +32,26 @@ exports.postEditProduct = (req, res) => {
   const { id, title, imageUrl, description, price } = req.body;
   Product.findById(id)
     .then((product) => {
+      if (product.userId.toString() !== req.user._id.toString()) {
+        req.flash('error', `you don't have permision to edit this product`);
+        return res.redirect('/404');
+      }
       product.title = title;
       product.imageUrl = imageUrl;
       product.description = description;
       product.price = price;
-      return product.save();
+      return product.save().then((result) => {
+        res.redirect('/admin/products');
+      });
     })
-    .then((result) => {
-      res.redirect('/admin/products');
-    })
+
     .catch((err) => {
       console.log(err);
     });
 };
 
 exports.getProducts = (req, res) => {
-  Product.find()
+  Product.find({ userId: req.user._id })
     // .select('title price -_id') // include title, price and exclude _id
     // .populate('userId', 'username') // like join in SQL
     .then((products) => {
@@ -75,6 +78,10 @@ exports.getEditProduct = (req, res) => {
       if (!product) {
         return res.redirect('/404');
       }
+      if (product.userId.toString() !== req.user._id.toString()) {
+        req.flash('error', `you don't have permision to edit this product`);
+        return res.redirect('/404');
+      }
       res.render('admin/edit-product', {
         path: '/admin/edit-product',
         pageTitle: 'Edit Product',
@@ -89,7 +96,7 @@ exports.getEditProduct = (req, res) => {
 
 exports.postDeleteProduct = (req, res) => {
   const id = req.body.id;
-  Product.findByIdAndRemove(id)
+  Product.deleteOne({ _id: id, userId: req.user._id })
     .then((result) => {
       res.redirect('/admin/products');
     })

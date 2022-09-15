@@ -9,7 +9,13 @@
   </head>
   <body>
     <%- include('includes/navbar.ejs') %>
-    <h1>Page Not Found!</h1>
+    <main>
+      <% if (errorMessage) { %>
+      <h1><%= errorMessage %></h1>
+      <% } else { %>
+      <h1>Page Not Found!</h1>
+      <% } %>
+    </main>
     <%- include('includes/scripts.ejs') %>
   </body>
 </html>

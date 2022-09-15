@@ -165,8 +165,6 @@ exports.postReset = (req, res) => {
         user.resetToken = token;
         user.resetTokenExpiration = Date.now() + 3600000;
         await user.save();
-        res.redirect('/');
-        console.log({ email });
         const result = await transporter.sendMail({
           from: 'moataz.bahaa220@gmail.com',
           to: email,
@@ -174,9 +172,11 @@ exports.postReset = (req, res) => {
           html: `
             <p>You requested a password reset</p>
             <p>Click this <a href="https://localhost:3000/reset/${token}">link</a> to set a new password</p>
-          `,
+            `,
         });
-        console.log({ result });
+        // for testing only
+        // user will recieve a lilnk on hist email
+        res.redirect(`/reset/${token}`);
       } catch (err) {
         console.log(err);
       }
@@ -184,16 +184,46 @@ exports.postReset = (req, res) => {
   });
 };
 
-// exports.getReset = (req, res) => {
-//   let message = req.flash('error');
-//   if (message.length > 0) {
-//     message = message[0];
-//   } else {
-//     message = null;
-//   }
-//   res.render('auth/reset', {
-//     pageTitle: 'rest password',
-//     path: '/reset',
-//     errorMessage: message,
-//   });
-// };
+exports.getNewPassword = async (req, res) => {
+  const { token } = req.params;
+  try {
+    const user = await User.findOne({
+      resetToken: token,
+      resetTokenExpiration: { $gt: Date.now() },
+    });
+    if (!user) {
+      req.flash('error', 'invalid token');
+      return res.redirect('/reset');
+    }
+    let message = req.flash('error');
+    if (message.length > 0) {
+      message = message[0];
+    } else {
+      message = null;
+    }
+    res.render('auth/new-password', {
+      pageTitle: 'New password',
+      path: '/new-password',
+      errorMessage: message,
+      userId: user._id.toString(),
+      token,
+    });
+  } catch (err) {
+    console.log(err);
+  }
+};
+
+exports.postNewPassword = async (req, res) => {
+  const { userId, newPassword } = req.body;
+  const user = await User.findById(userId);
+  if (!user) {
+    req.flash('error', 'invalid token');
+    return res.redirect('/rest');
+  }
+  const hashPassword = await bcrypt.hash(newPassword, 12);
+  user.password = hashPassword;
+  user.resetToken = undefined;
+  user.resetTokenExpiration = undefined;
+  await user.save();
+  res.redirect('/login');
+};
