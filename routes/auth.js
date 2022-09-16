@@ -1,4 +1,5 @@
 const express = require('express');
+const { signupValidator } = require('../validations/validator');
 
 const authConroller = require('../controllers/auth');
 
@@ -10,7 +11,7 @@ router.get('/signup', authConroller.getSignup);
 
 router.post('/login', authConroller.postLoin);
 
-router.post('/signup', authConroller.postSignup);
+router.post('/signup', signupValidator, authConroller.postSignup);
 
 router.post('/logout', authConroller.postLogout);
 

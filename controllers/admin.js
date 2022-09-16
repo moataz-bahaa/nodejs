@@ -1,4 +1,5 @@
 const Product = require('../models/product');
+const { validationResult } = require('express-validator');
 
 exports.getAddProduct = (req, res) => {
   res.render('admin/edit-product', {
@@ -6,11 +7,28 @@ exports.getAddProduct = (req, res) => {
     path: '/admin/add-product',
     editMode: false,
     product: {},
+    errorMessage: null,
+    validationErrors: [],
   });
 };
 
 exports.postAddProduct = (req, res) => {
-  const { title, price, imageUrl, description } = req.body;
+  const { title, price, imageUrl, description, id } = req.body;
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    let message = '';
+    for (let msg of errors.array()) {
+      message += msg.msg + ', ';
+    }
+    return res.status(422).render('admin/edit-product', {
+      pageTitle: 'Add Product',
+      path: '/admin/add-product',
+      editMode: false,
+      product: { title, price, imageUrl, description },
+      errorMessage: message,
+      validationErrors: errors.array(),
+    });
+  }
   const product = new Product({
     title,
     price: +price,
@@ -30,6 +48,21 @@ exports.postAddProduct = (req, res) => {
 
 exports.postEditProduct = (req, res) => {
   const { id, title, imageUrl, description, price } = req.body;
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    let message = '';
+    for (let msg of errors.array()) {
+      message += msg.msg + ', ';
+    }
+    return res.status(422).render('admin/edit-product', {
+      pageTitle: 'Edit Product',
+      path: '/admin/edit-product',
+      editMode: true,
+      product: { _id: id, title, price, imageUrl, description },
+      errorMessage: message,
+      validationErrors: errors.array(),
+    });
+  }
   Product.findById(id)
     .then((product) => {
       if (product.userId.toString() !== req.user._id.toString()) {
@@ -87,6 +120,8 @@ exports.getEditProduct = (req, res) => {
         pageTitle: 'Edit Product',
         editMode,
         product,
+        errorMessage: null,
+        validationErrors: [],
       });
     })
     .catch((err) => {

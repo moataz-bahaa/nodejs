@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const nodemailer = require('nodemailer');
 const sendgridTransport = require('nodemailer-sendgrid-transport');
+const { validationResult } = require('express-validator');
 
 const User = require('../models/user');
 
@@ -14,16 +15,23 @@ const transporter = nodemailer.createTransport(
 );
 
 exports.getLogin = (req, res) => {
-  let message = req.flash('error');
-  if (message.length > 0) {
-    message = message[0];
-  } else {
-    message = null;
+  const flash = req.flash('error');
+  let validationErrors = [],
+    oldInput = { email: '', password: '' },
+    errorMessage = null;
+  if (flash.length > 0) {
+    errorMessage = flash[0];
+  }
+  if (flash.length > 1) {
+    validationErrors = flash[1];
+    oldInput = flash[2];
   }
   res.render('auth/login', {
     pageTitle: 'Login',
     path: '/login',
-    errorMessage: message,
+    errorMessage,
+    validationErrors,
+    oldInput,
   });
 };
 
@@ -32,7 +40,7 @@ exports.postLoin = (req, res) => {
   User.findOne({ email })
     .then((user) => {
       if (!user) {
-        req.flash('error', 'Invalid email');
+        req.flash('error', ['invalid email', ['email'], { email, password }]);
         return res.redirect('/login');
       }
       return bcrypt
@@ -48,7 +56,7 @@ exports.postLoin = (req, res) => {
               return res.redirect('/');
             });
           }
-          req.flash('error', 'Invalid Password.');
+          req.flash('error', ['Invalid Password.', ['password'], { email, password }]);
           return res.redirect('/login');
         })
         .catch((err) => {
@@ -82,50 +90,64 @@ exports.getSignup = (req, res) => {
     path: '/signup',
     isAuthenticated: false,
     errorMessage: message,
+    oldInput: {
+      username: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+    },
+    validationErrors: [],
   });
 };
 
 exports.postSignup = (req, res) => {
   const { username, email, password, confirmPassword } = req.body;
-  if (password !== confirmPassword) {
-    req.flash('error', 'password and confirm password should be the same');
-    return res.redirect('/signup');
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    let message = '';
+    // console.log(errors.array());
+    for (let msg of errors.array()) {
+      message += msg.msg + ', ';
+    }
+    return res.status(422).render('auth/signup', {
+      pageTitle: 'Login',
+      path: '/signup',
+      isAuthenticated: false,
+      errorMessage: message,
+      oldInput: {
+        username,
+        email,
+        password,
+        confirmPassword,
+      },
+      validationErrors: errors.array(),
+    });
   }
-  User.findOne({ email })
-    .then((userDoc) => {
-      if (userDoc) {
-        req.flash('error', 'E-Mail exists already, please pick a different one.');
-        return res.redirect('/signup');
-      }
-      return bcrypt
-        .hash(password, 12)
-        .then((hashPassword) => {
-          const user = new User({
-            username,
-            email,
-            password: hashPassword,
-            cart: { itmes: [] },
+  bcrypt
+    .hash(password, 12)
+    .then((hashPassword) => {
+      const user = new User({
+        username,
+        email,
+        password: hashPassword,
+        cart: { itmes: [] },
+      });
+      return user.save();
+    })
+    .then((result) => {
+      res.redirect('/login');
+      (async () => {
+        try {
+          const result = await transporter.sendMail({
+            from: 'moataz.bahaa220@gmail.com',
+            to: 'moatazbahaa20@gmail.com',
+            subject: 'Signup succeeded',
+            html: '<h1>You succesfully signed up!</h1>',
           });
-          return user.save();
-        })
-        .then((result) => {
-          res.redirect('/login');
-          (async () => {
-            try {
-              const result = await transporter.sendMail({
-                from: 'moataz.bahaa220@gmail.com',
-                to: 'moatazbahaa20@gmail.com',
-                subject: 'Signup succeeded',
-                html: '<h1>You succesfully signed up!</h1>',
-              });
-            } catch (err) {
-              console.log(err);
-            }
-          })();
-        })
-        .catch((err) => {
+        } catch (err) {
           console.log(err);
-        });
+        }
+      })();
     })
     .catch((err) => {
       console.log(err);
@@ -165,18 +187,16 @@ exports.postReset = (req, res) => {
         user.resetToken = token;
         user.resetTokenExpiration = Date.now() + 3600000;
         await user.save();
+        res.redirect('/');
         const result = await transporter.sendMail({
           from: 'moataz.bahaa220@gmail.com',
           to: email,
           subject: 'Reset password',
           html: `
             <p>You requested a password reset</p>
-            <p>Click this <a href="https://localhost:3000/reset/${token}">link</a> to set a new password</p>
+            <p>Click this <a href="http://localhost:3000/reset/${token}">link</a> to set a new password</p>
             `,
         });
-        // for testing only
-        // user will recieve a lilnk on hist email
-        res.redirect(`/reset/${token}`);
       } catch (err) {
         console.log(err);
       }
