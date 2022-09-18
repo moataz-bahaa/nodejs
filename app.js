@@ -7,7 +7,6 @@ const csrf = require('csurf');
 const flash = require('connect-flash');
 require('dotenv').config();
 
-
 const joinPath = require('./util/path');
 const adminRoutes = require('./routes/admin');
 const shopRoutes = require('./routes/shop');
@@ -20,7 +19,7 @@ const MONGODB_URI = process.env.MONGODB_URI;
 const app = express();
 const store = new MongodbStore({
   uri: MONGODB_URI,
-  collection: 'sessions'
+  collection: 'sessions',
 });
 const csrfProtection = csrf();
 
@@ -32,25 +31,11 @@ app.use(
     secret: 'my secret', // should be a long string value
     resave: false,
     saveUninitialized: false,
-    store
+    store,
   })
 );
 app.use(csrfProtection);
 app.use(flash());
-
-app.use((req, res, next) => {
-  if (!req.session.user) {
-    return next();
-  }
-  User.findById(req.session.user._id)
-  .then((user) => {
-    req.user = user;
-    next();
-  })
-    .catch((err) => {
-      console.log(err);
-    });
-  });
 
 app.use((req, res, next) => {
   // passing variables to every view
@@ -59,11 +44,36 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use(async (req, res, next) => {
+  if (!req.session.user) {
+    return next();
+  }
+  try {
+    const user = await User.findById(req.session.user._id);
+    if (!user) {
+      return next();
+    }
+    req.user = user;
+    next();
+  } catch (err) {
+    next(new Error(err));
+  }
+});
+
 app.use('/admin', adminRoutes);
 app.use(shopRoutes);
 app.use(authRoutes);
 
+app.get('/500', errorController.get500);
 app.use(errorController.get404);
+
+app.use((error, req, res, next) => {
+  // res.redirect('/500');
+  res.status(500).render('500', {
+    pageTitle: 'Error!',
+    path: '/500',
+  });
+});
 
 const port = process.env.PORT || 3000;
 
@@ -80,4 +90,4 @@ mongoose
 
 // section 10 - 9
 
-// section 18 - 16
+// section 20 - 1

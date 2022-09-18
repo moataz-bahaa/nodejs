@@ -14,7 +14,7 @@ const transporter = nodemailer.createTransport(
   })
 );
 
-exports.getLogin = (req, res) => {
+exports.getLogin = (req, res, next) => {
   const flash = req.flash('error');
   let validationErrors = [],
     oldInput = { email: '', password: '' },
@@ -35,7 +35,7 @@ exports.getLogin = (req, res) => {
   });
 };
 
-exports.postLoin = (req, res) => {
+exports.postLoin = (req, res, next) => {
   const { email, password } = req.body;
   User.findOne({ email })
     .then((user) => {
@@ -60,16 +60,19 @@ exports.postLoin = (req, res) => {
           return res.redirect('/login');
         })
         .catch((err) => {
-          console.log(err);
-          return res.redirect('/login');
+          const error = new Error(err);
+          error.httpStatusCode = 500;
+          return next(error);
         });
     })
     .catch((err) => {
-      console.log(err);
+      const error = new Error(err);
+      error.httpStatusCode = 500;
+      return next(error);
     });
 };
 
-exports.postLogout = (req, res) => {
+exports.postLogout = (req, res, next) => {
   req.session.destroy((err) => {
     if (err) {
       console.log(err);
@@ -78,7 +81,7 @@ exports.postLogout = (req, res) => {
   });
 };
 
-exports.getSignup = (req, res) => {
+exports.getSignup = (req, res, next) => {
   let message = req.flash('error');
   if (message.length > 0) {
     message = message[0];
@@ -100,7 +103,7 @@ exports.getSignup = (req, res) => {
   });
 };
 
-exports.postSignup = (req, res) => {
+exports.postSignup = (req, res, next) => {
   const { username, email, password, confirmPassword } = req.body;
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -150,11 +153,13 @@ exports.postSignup = (req, res) => {
       })();
     })
     .catch((err) => {
-      console.log(err);
+      const error = new Error(err);
+      error.httpStatusCode = 500;
+      return next(error);
     });
 };
 
-exports.getReset = (req, res) => {
+exports.getReset = (req, res, next) => {
   let message = req.flash('error');
   if (message.length > 0) {
     message = message[0];
@@ -168,7 +173,7 @@ exports.getReset = (req, res) => {
   });
 };
 
-exports.postReset = (req, res) => {
+exports.postReset = (req, res, next) => {
   const { email } = req.body;
   crypto.randomBytes(32, (error, buffer) => {
     if (error) {
@@ -198,13 +203,15 @@ exports.postReset = (req, res) => {
             `,
         });
       } catch (err) {
-        console.log(err);
+        const error = new Error(err);
+        error.httpStatusCode = 500;
+        return next(error);
       }
     })();
   });
 };
 
-exports.getNewPassword = async (req, res) => {
+exports.getNewPassword = async (req, res, next) => {
   const { token } = req.params;
   try {
     const user = await User.findOne({
@@ -229,21 +236,29 @@ exports.getNewPassword = async (req, res) => {
       token,
     });
   } catch (err) {
-    console.log(err);
+    const error = new Error(err);
+    error.httpStatusCode = 500;
+    return next(error);
   }
 };
 
-exports.postNewPassword = async (req, res) => {
+exports.postNewPassword = async (req, res, next) => {
   const { userId, newPassword } = req.body;
-  const user = await User.findById(userId);
-  if (!user) {
-    req.flash('error', 'invalid token');
-    return res.redirect('/rest');
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      req.flash('error', 'invalid token');
+      return res.redirect('/rest');
+    }
+    const hashPassword = await bcrypt.hash(newPassword, 12);
+    user.password = hashPassword;
+    user.resetToken = undefined;
+    user.resetTokenExpiration = undefined;
+    await user.save();
+    res.redirect('/login');
+  } catch (err) {
+    const error = new Error(err);
+    error.httpStatusCode = 500;
+    return next(error);
   }
-  const hashPassword = await bcrypt.hash(newPassword, 12);
-  user.password = hashPassword;
-  user.resetToken = undefined;
-  user.resetTokenExpiration = undefined;
-  await user.save();
-  res.redirect('/login');
 };
