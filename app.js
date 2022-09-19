@@ -13,6 +13,7 @@ const shopRoutes = require('./routes/shop');
 const authRoutes = require('./routes/auth');
 const errorController = require('./controllers/error');
 const User = require('./models/user');
+const upload = require('./util/upload-file');
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
@@ -25,7 +26,9 @@ const csrfProtection = csrf();
 
 app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({ extended: false }));
+app.use(upload.single('image'));
 app.use(express.static(joinPath('public')));
+app.use('/images', express.static(joinPath('images')));
 app.use(
   session({
     secret: 'my secret', // should be a long string value
@@ -54,7 +57,7 @@ app.use(async (req, res, next) => {
       return next();
     }
     req.user = user;
-    next();
+    return next();
   } catch (err) {
     next(new Error(err));
   }
@@ -68,7 +71,7 @@ app.get('/500', errorController.get500);
 app.use(errorController.get404);
 
 app.use((error, req, res, next) => {
-  // res.redirect('/500');
+  console.log(error.message);
   res.status(500).render('500', {
     pageTitle: 'Error!',
     path: '/500',
@@ -90,4 +93,4 @@ mongoose
 
 // section 10 - 9
 
-// section 20 - 1
+// section 21 - 1

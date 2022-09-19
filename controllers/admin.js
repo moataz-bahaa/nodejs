@@ -1,5 +1,7 @@
-const Product = require('../models/product');
 const { validationResult } = require('express-validator');
+
+const Product = require('../models/product');
+const fileHelper = require('../util/file');
 
 exports.getAddProduct = (req, res, next) => {
   res.render('admin/edit-product', {
@@ -13,7 +15,18 @@ exports.getAddProduct = (req, res, next) => {
 };
 
 exports.postAddProduct = (req, res, next) => {
-  const { title, price, imageUrl, description, id } = req.body;
+  const { title, price, description } = req.body;
+  const image = req.file;
+  if (!image) {
+    return res.status(422).render('admin/edit-product', {
+      pageTitle: 'Add Product',
+      path: '/admin/add-product',
+      editMode: false,
+      product: { title, price, description },
+      errorMessage: 'Attacked file is not an image',
+      validationErrors: [],
+    });
+  }
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     let message = '';
@@ -24,11 +37,12 @@ exports.postAddProduct = (req, res, next) => {
       pageTitle: 'Add Product',
       path: '/admin/add-product',
       editMode: false,
-      product: { title, price, imageUrl, description },
+      product: { title, price, description },
       errorMessage: message,
       validationErrors: errors.array(),
     });
   }
+  const imageUrl = image.path;
   const product = new Product({
     title,
     price: +price,
@@ -49,7 +63,8 @@ exports.postAddProduct = (req, res, next) => {
 };
 
 exports.postEditProduct = (req, res, next) => {
-  const { id, title, imageUrl, description, price } = req.body;
+  const { id, title, description, price } = req.body;
+  const image = req.file;
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     let message = '';
@@ -60,7 +75,7 @@ exports.postEditProduct = (req, res, next) => {
       pageTitle: 'Edit Product',
       path: '/admin/edit-product',
       editMode: true,
-      product: { _id: id, title, price, imageUrl, description },
+      product: { _id: id, title, price, description },
       errorMessage: message,
       validationErrors: errors.array(),
     });
@@ -72,9 +87,12 @@ exports.postEditProduct = (req, res, next) => {
         return res.redirect('/404');
       }
       product.title = title;
-      product.imageUrl = imageUrl;
       product.description = description;
       product.price = price;
+      if (image) {
+        fileHelper.deleteFile(product.imageUrl);
+        product.imageUrl = image.path;
+      }
       return product.save().then((result) => {
         res.redirect('/admin/products');
       });
@@ -139,7 +157,14 @@ exports.getEditProduct = (req, res, next) => {
 
 exports.postDeleteProduct = (req, res, next) => {
   const id = req.body.id;
-  Product.deleteOne({ _id: id, userId: req.user._id })
+  Product.findById(id)
+    .then((product) => {
+      if (!product) {
+        return next(new Error('Product not found'));
+      }
+      fileHelper.deleteFile(product.imageUrl);
+      return Product.deleteOne({ _id: id, userId: req.user._id });
+    })
     .then((result) => {
       res.redirect('/admin/products');
     })

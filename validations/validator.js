@@ -30,7 +30,6 @@ exports.signupValidator = [
 
 exports.productValidator = [
   body('title', 'invalid title').isString().isLength({ min: 3 }).trim(),
-  body('imageUrl', 'invalid image URL').isURL(),
   body('price', 'price should be a floating point number').isFloat(),
   body('description', 'invalid description').isLength({ min: 5, max: 200 }).trim(),
 ];
