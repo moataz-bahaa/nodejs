@@ -5,20 +5,27 @@ const PDFDocument = require('pdfkit');
 
 const joinPath = require('../util/path');
 
-exports.getProducts = (req, res, next) => {
-  Product.find()
-    .then((products) => {
-      res.render('shop/product-list', {
-        pageTitle: 'All Products',
-        path: '/products',
-        prods: products,
-      });
-    })
-    .catch((err) => {
-      const error = new Error(err);
-      error.httpStatusCode = 500;
-      return next(error);
+const ITEMS_PER_PAGE = 2;
+
+exports.getProducts = async (req, res, next) => {
+  const { page } = req.query;
+  try {
+    const numberOfProducts = await Product.find().countDocuments();
+    const products = await Product.find()
+      .skip((page - 1) * ITEMS_PER_PAGE)
+      .limit(ITEMS_PER_PAGE);
+    res.render('shop/product-list', {
+      pageTitle: 'All Products',
+      path: '/products',
+      prods: products,
+      currentPage: page || 1,
+      numberOfPages: Math.ceil(numberOfProducts / ITEMS_PER_PAGE),
     });
+  } catch (err) {
+    const error = new Error(err);
+    error.httpStatusCode = 500;
+    return next(error);
+  }
 };
 
 exports.getProduct = (req, res) => {
@@ -38,20 +45,25 @@ exports.getProduct = (req, res) => {
     });
 };
 
-exports.getIndex = (req, res) => {
-  Product.find()
-    .then((products) => {
-      res.render('shop/product-list', {
-        pageTitle: 'Shop',
-        path: '/',
-        prods: products,
-      });
-    })
-    .catch((err) => {
-      const error = new Error(err);
-      error.httpStatusCode = 500;
-      return next(error);
+exports.getIndex = async (req, res) => {
+  const { page } = req.query;
+  try {
+    const numberOfProducts = await Product.find().countDocuments();
+    const products = await Product.find()
+      .skip((page - 1) * ITEMS_PER_PAGE)
+      .limit(ITEMS_PER_PAGE);
+    res.render('shop/index', {
+      pageTitle: 'Shop',
+      path: '/',
+      prods: products,
+      currentPage: page || 1,
+      numberOfPages: Math.ceil(numberOfProducts / ITEMS_PER_PAGE),
     });
+  } catch (err) {
+    const error = new Error(err);
+    error.httpStatusCode = 500;
+    return next(error);
+  }
 };
 
 exports.getCart = (req, res) => {
@@ -180,7 +192,7 @@ exports.getInvoice = async (req, res, next) => {
 
     pdfDoc.fontSize(26).text('Invoice', {
       underline: true,
-      align: 'center'
+      align: 'center',
     });
     pdfDoc.text('-------------------');
     let totalPrice = 0;
