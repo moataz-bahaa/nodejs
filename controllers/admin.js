@@ -155,22 +155,24 @@ exports.getEditProduct = (req, res, next) => {
     });
 };
 
-exports.postDeleteProduct = (req, res, next) => {
-  const id = req.body.id;
-  Product.findById(id)
-    .then((product) => {
-      if (!product) {
-        return next(new Error('Product not found'));
-      }
-      fileHelper.deleteFile(product.imageUrl);
-      return Product.deleteOne({ _id: id, userId: req.user._id });
-    })
-    .then((result) => {
-      res.redirect('/admin/products');
-    })
-    .catch((err) => {
-      const error = new Error(err);
-      error.httpStatusCode = 500;
-      return next(error);
+exports.deleteProduct = async (req, res, next) => {
+  console.log('Hello there');
+  const { id } = req.params;
+  try {
+    const product = await Product.findById(id);
+    if (!product) {
+      return res.status(404).json({
+        message: 'Product not found',
+      });
+    }
+    fileHelper.deleteFile(product.imageUrl);
+    await Product.deleteOne({ _id: id, userId: req.user._id });
+    res.status(200).json({
+      message: 'Success!'
     });
+  } catch (err) {
+    res.status(500).json({
+      message: 'Deleting product failed.'
+    });
+  }
 };

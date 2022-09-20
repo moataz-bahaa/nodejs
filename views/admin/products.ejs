@@ -29,11 +29,9 @@
             <a href="/admin/edit-product/<%= product._id %>?editMode=true" class="btn"
               >Edit</a
             >
-            <form action="/admin/delete-product" method="POST">
-              <input type="hidden" name="id" value="<%= product._id %>" />
-              <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
-              <button class="btn" type="submit">Delete</button>
-            </form>
+            <input type="hidden" name="id" value="<%= product._id %>" />
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+            <button class="btn delete-product">Delete</button>
           </div>
         </article>
         <% } %>
@@ -43,5 +41,6 @@
       <% } %>
     </main>
     <%- include('../includes/scripts.ejs') %>
+    <script src="/js/admin.js"></script>
   </body>
 </html>
