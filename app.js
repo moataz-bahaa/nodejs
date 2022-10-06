@@ -90,7 +90,3 @@ mongoose
   .catch((err) => {
     console.log(err);
   });
-
-// section 10 - 9
-
-// section 23 - 1

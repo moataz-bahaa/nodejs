@@ -66,7 +66,7 @@ exports.getIndex = async (req, res) => {
   }
 };
 
-exports.getCart = (req, res) => {
+exports.getCart = (req, res, next) => {
   req.user
     .populate('cart.items.productId')
     .then((user) => {
@@ -84,14 +84,14 @@ exports.getCart = (req, res) => {
     });
 };
 
-exports.checkout = (req, res) => {
+exports.checkout = (req, res, next) => {
   res.render('shop/checkout', {
     path: '/checkout',
     pageTitle: 'Checkout',
   });
 };
 
-exports.postCart = (req, res) => {
+exports.postCart = (req, res, next) => {
   const productId = req.body.productId;
   Product.findById(productId)
     .then((product) => {
@@ -107,7 +107,7 @@ exports.postCart = (req, res) => {
     });
 };
 
-exports.postDeleteProductFromCart = (req, res) => {
+exports.postDeleteProductFromCart = (req, res, next) => {
   const productId = req.body.id;
   req.user
     .removeFromCart(productId)
@@ -121,7 +121,7 @@ exports.postDeleteProductFromCart = (req, res) => {
     });
 };
 
-exports.getOrders = (req, res) => {
+exports.getOrders = (req, res, next) => {
   Order.find({ 'user.userId': req.user._id })
     .then((orders) => {
       // console.log({orders});
@@ -136,6 +136,27 @@ exports.getOrders = (req, res) => {
       error.httpStatusCode = 500;
       return next(error);
     });
+};
+
+exports.getCheckout = async (req, res, next) => {
+  try {
+    const user = await req.user.populate('cart.items.productId');
+    const products = user.cart.items;
+    let totalPrice = 0;
+    products.forEach((p) => {
+      totalPrice += p.productId.price * p.quantity;
+    });
+    res.render('shop/checkout', {
+      pageTitle: 'Checkout',
+      path: '/checkout',
+      products,
+      totalPrice,
+    });
+  } catch (err) {
+    const error = new Error(err);
+    error.httpStatusCode = 500;
+    return next(error);
+  }
 };
 
 exports.postOrder = (req, res) => {
